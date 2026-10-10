@@ -1,0 +1,473 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#8b5cf6"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><title>ReelMagic AI</title><style>body{margin:0;background:#fff8ee;font-family:system-ui,"Noto Sans Devanagari",sans-serif;color:#2a1b3d}
+.w{max-width:960px;margin:auto;padding:16px;display:grid;gap:14px}@media(min-width:800px){.w{grid-template-columns:1fr 1fr}.f{grid-column:1/3}}
+h1{margin:0;background:linear-gradient(90deg,#ec4899,#8b5cf6,#f97316);-webkit-background-clip:text;color:transparent}
+.c{background:#fff;border-radius:20px;padding:16px;box-shadow:0 6px 24px #8b5cf622;display:grid;gap:10px;align-content:start}
+textarea,select{width:100%;box-sizing:border-box;padding:12px;border:2px solid #f3d9ff;border-radius:14px;font:inherit;background:#fffdf9}textarea{min-height:130px}
+.b{border:0;border-radius:14px;padding:14px;font:inherit;font-weight:700;color:#fff;background:linear-gradient(90deg,#ec4899,#8b5cf6,#f97316);text-align:center;text-decoration:none;cursor:pointer}.b:disabled{opacity:.5}
+.bar{height:10px;background:#f3d9ff;border-radius:9px;overflow:hidden}.bar i{display:block;height:100%;background:#f97316}
+.e{background:#fee2e2;color:#991b1b;padding:10px;border-radius:12px}.n{font-size:12px;color:#6b5a80}video{width:100%;max-height:70vh;border-radius:14px;background:#000}
+h3{margin:0}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row>select,.row>.b{flex:1}
+.sc{border:2px solid #f3d9ff;border-radius:16px;padding:10px;display:grid;gap:8px}
+.th{width:56px;height:56px;border-radius:10px;object-fit:cover;background:#f3d9ff;display:grid;place-items:center;font-size:28px}
+.sm{padding:10px;border:0;border-radius:10px;background:#f3d9ff;color:#2a1b3d;font:inherit;cursor:pointer}.b.sm{background:linear-gradient(90deg,#ec4899,#8b5cf6);color:#fff}
+input[type=url]{width:100%;box-sizing:border-box;padding:12px;border:2px solid #f3d9ff;border-radius:14px;font:inherit}
+input[type=number]{width:70px;padding:8px;border:2px solid #f3d9ff;border-radius:10px;font:inherit}
+</style></head><body><div id="root">Loading… (needs internet the first time)</div>
+<script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+<script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script>"use strict";
+const { useEffect, useRef, useState } = React;
+const LANGS = ['Hindi', 'Haryanvi', 'Punjabi', 'English'];
+const CATS = ['horror', 'love', 'comedy', 'mythology', 'motivation', 'suspense'];
+const CAT_HI = ['हॉरर', 'प्रेम', 'कॉमेडी', 'पौराणिक', 'प्रेरणा', 'सस्पेंस'];
+const ICON = { horror: '👻', love: '💖', comedy: '😂', mythology: '🔱', motivation: '🔥', suspense: '🕵️' };
+const PAL = { Cinematic: ['#2b1055', '#f97316'], Cartoon: ['#ec4899', '#facc15'], Dark: ['#0f0f1a', '#7c3aed'], Dreamy: ['#a78bfa', '#fbcfe8'] };
+const VL = { Hindi: 'hi-IN', Haryanvi: 'hi-IN', Punjabi: 'pa-IN', English: 'en-IN' };
+const MIMES = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+// Original starter stories (3 scenes each, "|" separates scenes). Haryanvi/Punjabi text should be reviewed by a native speaker.
+const TPL = {
+    horror: { Hindi: 'वो पुरानी हवेली सालों से खाली थी।|आज रात ऊपर की मोमबत्ती खुद जल उठी।|कानों में आवाज़ आई: "आख़िर तुम लौट आए।"', Haryanvi: 'वो पुराणी हवेली बरसां तै खाली पड़ी थी।|आज रात ऊपर की मोमबत्ती आपै जल पड़ी।|कान म्हं आवाज आई: "आखिर तू आ गया।"', Punjabi: 'ਉਹ ਪੁਰਾਣੀ ਹਵੇਲੀ ਸਾਲਾਂ ਤੋਂ ਖਾਲੀ ਸੀ।|ਅੱਜ ਰਾਤ ਉੱਪਰ ਮੋਮਬੱਤੀ ਆਪੇ ਬਲ ਪਈ।|ਕੰਨਾਂ ਵਿੱਚ ਆਵਾਜ਼ ਆਈ: "ਆਖ਼ਰ ਤੂੰ ਮੁੜ ਆਇਆ।"', English: 'The old house had been empty for years.|Tonight, a candle lit itself upstairs.|A whisper said: "Finally, you came back."' },
+    love: { Hindi: 'हर सुबह वो उसी बस स्टॉप पर इंतज़ार करती थी।|वो कुछ नहीं बोलता, बस अपनी छतरी बाँट देता।|सालों बाद भी वही छतरी दोनों को सँभाले है।', Haryanvi: 'हर सुबह वो उसी बस अड्डे पै उडीक करै थी।|वो कुछ ना बोल्दा, बस आपणी छतरी बांट देता।|बरसां पाछै भी वा छतरी दोनूं नैं संभाले है।', Punjabi: 'ਹਰ ਸਵੇਰ ਉਹ ਉਸੇ ਬੱਸ ਅੱਡੇ ਤੇ ਉਡੀਕ ਕਰਦੀ ਸੀ।|ਉਹ ਕੁਝ ਨਾ ਬੋਲਦਾ, ਬੱਸ ਆਪਣੀ ਛਤਰੀ ਸਾਂਝੀ ਕਰਦਾ।|ਸਾਲਾਂ ਬਾਅਦ ਵੀ ਉਹੀ ਛਤਰੀ ਦੋਵਾਂ ਨੂੰ ਸਾਂਭਦੀ ਹੈ।', English: 'Every morning, she waited at the same bus stop.|He never spoke, only shared his umbrella.|Years later, that umbrella still covers them both.' },
+    comedy: { Hindi: 'पापा ने कहा, पैसे बचाना सीखो।|मैंने घर के सारे चार्जर बचा लिए।|अब पूरा घर चार्जर ढूँढ रहा है।', Haryanvi: 'बाप्पू नैं कही, पइसे बचाणा सीख।|मैं घर के सारे चार्जर बचा ल्याया।|अब सारा घर चार्जर टोह रह्या है।', Punjabi: 'ਪਿਤਾ ਜੀ ਨੇ ਕਿਹਾ, ਪੈਸੇ ਬਚਾਉਣੇ ਸਿੱਖ।|ਮੈਂ ਘਰ ਦੇ ਸਾਰੇ ਚਾਰਜਰ ਬਚਾ ਲਏ।|ਹੁਣ ਸਾਰਾ ਘਰ ਚਾਰਜਰ ਲੱਭ ਰਿਹਾ ਹੈ।', English: 'Dad told me to start saving money.|So I saved every charger in the house.|Now the whole family is hunting for a charger.' },
+    mythology: { Hindi: 'एक युवा धनुर्धर बरगद के नीचे अभ्यास करता था।|उसे पक्षी नहीं, सिर्फ़ निशाने की आँख दिखती थी।|गुरु बोले, एकाग्रता ही सबसे बड़ा शस्त्र है।', Haryanvi: 'एक छोरा धनुर्धर बड़ के हेठ्ठै अभ्यास करता।|उसनैं चिड़िया ना, बस निशाने की आंख दिखै थी।|गुरु बोल्ले, ध्यान ए सबतै बड़ा हथियार है।', Punjabi: 'ਇੱਕ ਜਵਾਨ ਤੀਰਅੰਦਾਜ਼ ਬੋਹੜ ਹੇਠ ਅਭਿਆਸ ਕਰਦਾ ਸੀ।|ਉਸਨੂੰ ਪੰਛੀ ਨਹੀਂ, ਸਿਰਫ਼ ਨਿਸ਼ਾਨੇ ਦੀ ਅੱਖ ਦਿਸਦੀ ਸੀ।|ਗੁਰੂ ਬੋਲੇ, ਇਕਾਗਰਤਾ ਹੀ ਸਭ ਤੋਂ ਵੱਡਾ ਹਥਿਆਰ ਹੈ।', English: 'A young archer practised under a banyan tree.|He ignored every bird and saw only the target.|Focus, said his teacher, is the greatest weapon.' },
+    motivation: { Hindi: 'वो तीन बार परीक्षा में फेल हुआ।|सब हँसे, पर उसने पढ़ना नहीं छोड़ा।|चौथी बार उसने पूरे शहर में टॉप किया।', Haryanvi: 'वो तीन बार इम्तिहान म्हं फेल होया।|सब हांसे, पर उसनैं पढ़णा ना छोड़्या।|चौथी बार उसनैं सारे शहर म्हं टॉप कर दिया।', Punjabi: 'ਉਹ ਤਿੰਨ ਵਾਰ ਇਮਤਿਹਾਨ ਵਿੱਚ ਫੇਲ੍ਹ ਹੋਇਆ।|ਸਭ ਹੱਸੇ, ਪਰ ਉਸਨੇ ਪੜ੍ਹਨਾ ਨਹੀਂ ਛੱਡਿਆ।|ਚੌਥੀ ਵਾਰ ਉਸਨੇ ਪੂਰੇ ਸ਼ਹਿਰ ਵਿੱਚ ਟਾਪ ਕੀਤਾ।', English: 'He failed his exam three times.|Everyone laughed, but he kept studying.|The fourth time, he topped the city.' },
+    suspense: { Hindi: 'एक बिना भेजने वाले का ख़त आया।|अंदर बस मेरा पता था, मेरी ही लिखावट में।|पीछे का दरवाज़ा चरमराकर खुल गया।', Haryanvi: 'एक चिट्ठी आई, भेजण आळे का नाम कोन्या।|भीतरै बस मेरा पता था, मेरी ए लिखाई म्हं।|पाछै का दरवाज्जा चरड़ कर खुल गया।', Punjabi: 'ਇੱਕ ਬਿਨਾਂ ਭੇਜਣ ਵਾਲੇ ਦੀ ਚਿੱਠੀ ਆਈ।|ਅੰਦਰ ਬੱਸ ਮੇਰਾ ਪਤਾ ਸੀ, ਮੇਰੀ ਆਪਣੀ ਲਿਖਾਈ ਵਿੱਚ।|ਪਿੱਛੇ ਦਾ ਦਰਵਾਜ਼ਾ ਚੀਂ ਕਰਕੇ ਖੁੱਲ੍ਹ ਗਿਆ।', English: 'A letter arrived with no sender.|Inside was only my address, in my own handwriting.|The door behind me creaked open.' }
+};
+const W = 720, H = 1280, TD = .6;
+function wrap(g, text, w) { const o = []; let l = ''; for (const x of text.split(' ')) {
+    const s = l ? l + ' ' + x : x;
+    if (g.measureText(s).width > w && l) {
+        o.push(l);
+        l = x;
+    }
+    else
+        l = s;
+} o.push(l); return o; }
+function drawScene(g, c, i, lt, a, dx, z) {
+    const s = c.S[i], [c1, c2] = PAL[c.style], im = c.imgs.get(s.id);
+    g.save();
+    g.globalAlpha = a;
+    g.translate(dx, 0);
+    g.save();
+    g.translate(W / 2, H / 2);
+    g.scale(z, z);
+    g.translate(-W / 2, -H / 2);
+    if (im && s.img) {
+        const k = 1 + .06 * Math.min(1, lt / s.dur), r = Math.max(W / im.naturalWidth, H / im.naturalHeight) * k;
+        g.drawImage(im, (W - im.naturalWidth * r) / 2, (H - im.naturalHeight * r) / 2, im.naturalWidth * r, im.naturalHeight * r);
+    }
+    else {
+        const gr = g.createLinearGradient(0, 0, W * (i % 2), H);
+        gr.addColorStop(0, c1);
+        gr.addColorStop(1, c2);
+        g.fillStyle = gr;
+        g.fillRect(0, 0, W, H);
+        g.textAlign = 'center';
+        g.font = '260px serif';
+        g.fillText(ICON[c.cat] || '🎬', W / 2, 560);
+    }
+    g.restore();
+    if (s.caption) {
+        g.textAlign = 'center';
+        g.font = 'bold 46px "Noto Sans Devanagari","Noto Sans Gurmukhi",sans-serif';
+        const ls = wrap(g, s.caption, 610), h = ls.length * 60 + 40;
+        g.fillStyle = 'rgba(0,0,0,.6)';
+        g.fillRect(40, 1020 - h / 2, 640, h);
+        g.fillStyle = '#fff';
+        ls.forEach((l, k) => g.fillText(l, W / 2, 1020 - h / 2 + 55 + k * 60));
+    }
+    g.restore();
+}
+function drawFrame(g, c, t) {
+    const S = c.S, total = S.reduce((a, s) => a + s.dur, 0);
+    let i = 0, s0 = 0, st = 0;
+    for (let k = 0; k < S.length; k++) {
+        if (t >= st) {
+            i = k;
+            s0 = st;
+        }
+        st += S[k].dur;
+    }
+    const lt = t - s0, s = S[i];
+    g.fillStyle = '#000';
+    g.fillRect(0, 0, W, H);
+    if (i > 0 && s.trans !== 'none' && lt < TD) {
+        const p = lt / TD, pl = S[i - 1].dur + lt;
+        if (s.trans === 'slide') {
+            drawScene(g, c, i - 1, pl, 1, -p * W, 1);
+            drawScene(g, c, i, lt, 1, (1 - p) * W, 1);
+        }
+        else {
+            drawScene(g, c, i - 1, pl, 1, 0, 1);
+            drawScene(g, c, i, lt, p, 0, s.trans === 'zoom' ? 1.25 - .25 * p : 1);
+        }
+    }
+    else
+        drawScene(g, c, i, lt, 1, 0, 1);
+    g.fillStyle = 'rgba(255,255,255,.85)';
+    g.fillRect(0, H - 10, W * Math.min(1, t / total), 10);
+    return i;
+}
+const playable = (u) => new Promise(r => { const v = document.createElement('video'); v.preload = 'metadata'; v.onloadedmetadata = () => r(true); v.onerror = () => r(false); setTimeout(() => r(false), 8000); v.src = u; });
+const sup = (m) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(m);
+function App() {
+    const [ui, setUi] = useState('en');
+    const t = (e, h) => ui === 'en' ? e : h;
+    const [lang, setLang] = useState('Hindi'), [cat, setCat] = useState('motivation'), [style, setStyle] = useState('Cinematic'), [own, setOwn] = useState('');
+    const [scenes, setScenes] = useState([]), [voice, setVoice] = useState(false), [music, setMusic] = useState(true);
+    const [busy, setBusy] = useState(''), [pct, setPct] = useState(0), [err, setErr] = useState(''), [url, setUrl] = useState(''), [fmt, setFmt] = useState(''), [ai, setAi] = useState(false), [tick, setTick] = useState(0);
+    const [len, setLen] = useState(15), [base, setBase] = useState(() => { try {
+        return localStorage.getItem('rm_ai') || '';
+    }
+    catch {
+        return '';
+    } }), [caps, setCaps] = useState({}), [voices, setVoices] = useState([]), [vn, setVn] = useState(''), [inst, setInst] = useState(null);
+    const imgs = useRef(new Map()), cv = useRef(null), scR = useRef(scenes), stopR = useRef(false), idR = useRef(1);
+    scR.current = scenes;
+    const mp4 = sup('video/mp4'), webm = sup('video/webm');
+    useEffect(() => { setAi(false); setCaps({}); fetch(base.replace(/\/+$/, '') + '/api/health').then(r => r.json()).then(d => { setAi(!!d.gemini); setCaps(d); }).catch(() => { }); }, [base]);
+    useEffect(() => { if (!('speechSynthesis' in window))
+        return; const f = () => setVoices(speechSynthesis.getVoices()); f(); speechSynthesis.addEventListener('voiceschanged', f); return () => speechSynthesis.removeEventListener('voiceschanged', f); }, []);
+    useEffect(() => { const h = (e) => { e.preventDefault(); setInst(e); }; window.addEventListener('beforeinstallprompt', h); return () => window.removeEventListener('beforeinstallprompt', h); }, []);
+    useEffect(() => { const g = cv.current?.getContext('2d'); if (g && scenes.length && !busy || g && scenes.length && busy === 'ai')
+        drawFrame(g, { S: scenes, imgs: imgs.current, style, cat }, 0); }, [scenes, style, cat, busy, tick]);
+    const upd = (id, p) => setScenes(S => S.map(s => s.id === id ? { ...s, ...p } : s));
+    const nid = () => idR.current++;
+    function fromLines(lines, total = scR.current.reduce((a, s) => a + s.dur, 0) || 15) {
+        const d = Math.min(20, Math.max(1, Math.round(total / lines.length * 10) / 10)), old = scR.current;
+        setScenes(lines.map((c, i) => ({ id: old[i]?.id ?? nid(), caption: c, dur: d, trans: old[i]?.trans ?? 'fade', img: old[i]?.img })));
+    }
+    const tpl = () => fromLines(TPL[cat][lang].split('|'), len);
+    function useOwn() {
+        const x = own.trim();
+        if (!x)
+            return setErr(t('Write your story first.', 'पहले अपनी कहानी लिखें।'));
+        let L = x.split(/\n+/).map(s => s.trim()).filter(Boolean);
+        if (L.length < 2)
+            L = x.split(/(?<=[.!?।])\s+/).filter(Boolean);
+        setErr('');
+        fromLines(L.slice(0, 12).map(s => s.slice(0, 200)), len);
+    }
+    const fit = (n) => { setLen(n); setScenes(S => S.map(s => ({ ...s, dur: Math.min(20, Math.max(1, Math.round(n / S.length * 10) / 10)) }))); };
+    async function loadImg(id, f) {
+        if (!f.type.startsWith('image/') || f.size > 15e6)
+            throw new Error(t('Choose an image under 15 MB.', '15 MB से छोटी इमेज चुनें।'));
+        const u = URL.createObjectURL(f), im = new Image();
+        im.src = u;
+        try {
+            await im.decode();
+        }
+        catch {
+            throw new Error(t('Could not read that image.', 'इमेज पढ़ी नहीं जा सकी।'));
+        }
+        imgs.current.set(id, im);
+        return u;
+    }
+    async function setImg(id, f) { if (!f)
+        return; try {
+        upd(id, { img: await loadImg(id, f) });
+        setErr('');
+    }
+    catch (e) {
+        setErr(e.message);
+    } }
+    async function bulk(fs) {
+        if (!fs)
+            return;
+        const S = scR.current.map(s => ({ ...s }));
+        try {
+            for (const f of Array.from(fs)) {
+                let s = S.find(x => !x.img);
+                if (!s) {
+                    s = { id: nid(), caption: '', dur: 3, trans: 'fade' };
+                    S.push(s);
+                }
+                s.img = await loadImg(s.id, f);
+            }
+            setScenes(S);
+            setErr('');
+        }
+        catch (e) {
+            setErr(e.message);
+            setScenes(S);
+        }
+    }
+    const move = (i, d) => setScenes(S => { const a = [...S], j = i + d; if (j < 0 || j >= a.length)
+        return a; [a[i], a[j]] = [a[j], a[i]]; return a; });
+    async function gemini() {
+        setErr('');
+        setBusy('ai');
+        try {
+            const total = scR.current.reduce((a, s) => a + s.dur, 0), dur = [15, 30, 45, 60].reduce((p, c) => Math.abs(c - total) < Math.abs(p - total) ? c : p, 15);
+            const r = await fetch(base.replace(/\/+$/, '') + '/api/story', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idea: own || 'A short surprising story', language: lang, category: cat, duration: dur }) });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok)
+                throw new Error(d.error || 'Gemini request failed');
+            setLen(dur);
+            fromLines(d.scenes.map((s) => s.subtitle), dur);
+        }
+        catch (e) {
+            setErr(e.message);
+        }
+        finally {
+            setBusy('');
+        }
+    }
+    async function play(record) {
+        if (busy)
+            return;
+        const S = scR.current;
+        if (!S.length)
+            return setErr(t('Add at least one scene.', 'कम से कम एक सीन जोड़ें।'));
+        setErr('');
+        setUrl('');
+        setFmt('');
+        stopR.current = false;
+        const c = { S, imgs: imgs.current, style, cat }, g = cv.current.getContext('2d'), total = S.reduce((a, s) => a + s.dur, 0);
+        let ac, oscs = [], rec;
+        const chunks = [];
+        try {
+            let mime;
+            if (record) {
+                if (typeof MediaRecorder === 'undefined' || !cv.current.captureStream)
+                    throw new Error(t('This browser cannot record video. Use the latest Chrome.', 'यह ब्राउज़र वीडियो रिकॉर्ड नहीं कर सकता। नया Chrome इस्तेमाल करें।'));
+                mime = MIMES.find(sup);
+                if (!mime)
+                    throw new Error(t('No supported video recording format found.', 'कोई सपोर्टेड वीडियो फ़ॉर्मेट नहीं मिला।'));
+            }
+            setBusy(record ? 'rec' : 'prev');
+            let dest;
+            if (music) {
+                ac = new AudioContext();
+                const gn = ac.createGain();
+                gn.gain.value = .06;
+                if (record) {
+                    dest = ac.createMediaStreamDestination();
+                    gn.connect(dest);
+                }
+                else
+                    gn.connect(ac.destination);
+                oscs = [220, 277.2, 329.6].map(f => { const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = f; o.connect(gn); o.start(); return o; });
+            }
+            if (record) {
+                const stream = cv.current.captureStream(30);
+                dest?.stream.getAudioTracks().forEach(k => stream.addTrack(k));
+                rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4e6 });
+                rec.ondataavailable = e => { if (e.data.size)
+                    chunks.push(e.data); };
+            }
+            const stopped = rec ? new Promise(r => { rec.onstop = () => r(); }) : Promise.resolve();
+            rec?.start(500);
+            const t0 = performance.now();
+            let last = -1;
+            await new Promise(res => {
+                const f = () => {
+                    const tt = (performance.now() - t0) / 1000;
+                    if (tt >= total || stopR.current)
+                        return res();
+                    const i = drawFrame(g, c, tt);
+                    if (i !== last) {
+                        last = i;
+                        oscs.forEach((o, k) => o.frequency.setTargetAtTime([220, 277.2, 329.6][k] * [1, 1.125, 1.2, 1.333][i % 4], ac.currentTime, .5));
+                        if (voice && 'speechSynthesis' in window && S[i].caption) {
+                            speechSynthesis.cancel();
+                            const u = new SpeechSynthesisUtterance(S[i].caption);
+                            u.lang = VL[lang];
+                            const vo = voices.find(v => v.name === vn);
+                            if (vo)
+                                u.voice = vo;
+                            speechSynthesis.speak(u);
+                        }
+                    }
+                    setPct(tt / total);
+                    requestAnimationFrame(f);
+                };
+                f();
+            });
+            if (rec) {
+                rec.stop();
+                await stopped;
+                if (stopR.current)
+                    throw new Error(t('Export stopped. No file was created.', 'एक्सपोर्ट रोका गया। कोई फ़ाइल नहीं बनी।'));
+                const type = (rec.mimeType || mime || '').split(';')[0], blob = new Blob(chunks, { type });
+                if (!blob.size)
+                    throw new Error(t('Recording was empty.', 'रिकॉर्डिंग खाली थी।'));
+                const u = URL.createObjectURL(blob);
+                if (!(await playable(u)))
+                    throw new Error(t('The recorded file could not be played back, so it was discarded.', 'रिकॉर्ड की गई फ़ाइल प्ले नहीं हुई, इसलिए हटा दी गई।'));
+                setFmt(type.includes('mp4') ? 'mp4' : 'webm');
+                setUrl(u);
+            }
+        }
+        catch (e) {
+            setErr(e.message);
+        }
+        finally {
+            oscs.forEach(o => o.stop());
+            ac?.close();
+            if ('speechSynthesis' in window)
+                speechSynthesis.cancel();
+            setBusy('');
+            setPct(0);
+            setTick(x => x + 1);
+        }
+    }
+    const lv = voices.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith(VL[lang].slice(0, 2)));
+    n;
+    const total = Math.round(scenes.reduce((a, s) => a + s.dur, 0) * 10) / 10;
+    return React.createElement("div", { className: "w" },
+        React.createElement("div", { className: "f", style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+            React.createElement("div", null,
+                React.createElement("h1", null, "\uD83C\uDFAC ReelMagic AI"),
+                React.createElement("div", { className: "n" }, t('Make vertical Reels from your story & photos — no API key needed', 'अपनी कहानी और फोटो से वर्टिकल रील बनाएँ — API key ज़रूरी नहीं'))),
+            React.createElement("button", { className: "b", onClick: () => setUi(ui === 'en' ? 'hi' : 'en') }, ui === 'en' ? 'हिंदी' : 'EN')),
+        React.createElement("div", { className: "c" },
+            React.createElement("h3", null,
+                "1. ",
+                t('Story', 'कहानी')),
+            React.createElement("div", { className: "row" },
+                React.createElement("select", { value: cat, onChange: e => setCat(e.target.value) }, CATS.map((k, i) => React.createElement("option", { key: k, value: k },
+                    ICON[k],
+                    " ",
+                    ui === 'en' ? k : CAT_HI[i]))),
+                React.createElement("select", { value: lang, onChange: e => setLang(e.target.value) }, LANGS.map(x => React.createElement("option", { key: x }, x)))),
+            React.createElement("button", { className: "b", onClick: tpl }, t('Load starter story template', 'रेडीमेड कहानी लोड करें')),
+            React.createElement("textarea", { value: own, onChange: e => setOwn(e.target.value), placeholder: t('…or write your own story (one line = one scene)', '…या अपनी कहानी लिखें (एक लाइन = एक सीन)') }),
+            React.createElement("button", { className: "b", onClick: useOwn }, t('Use my story', 'मेरी कहानी इस्तेमाल करें')),
+            ai && React.createElement("button", { className: "b", disabled: !!busy, onClick: gemini },
+                "\u2728 ",
+                t('Optional: write with Gemini (server key found)', 'वैकल्पिक: Gemini से लिखें')),
+            React.createElement("div", { className: "n" },
+                t('Video length', 'वीडियो की लंबाई'),
+                ": ",
+                total,
+                "s / ",
+                len,
+                "s",
+                total < len - 1 ? ' — ' + t('add more scenes to reach the target (max 20s per scene)', 'लक्ष्य के लिए और सीन जोड़ें (प्रति सीन अधिकतम 20s)') : ''),
+            React.createElement("div", { className: "row" }, [15, 30, 45, 60].map(n => React.createElement("button", { key: n, className: len === n ? 'b' : 'sm', onClick: () => fit(n) },
+                n,
+                "s")))),
+        React.createElement("div", { className: "c" },
+            React.createElement("h3", null,
+                "2. ",
+                t('Scenes', 'सीन'),
+                " (",
+                scenes.length,
+                ")"),
+            !scenes.length && React.createElement("div", { className: "n" }, t('Load a template or use your story to create scenes.', 'सीन बनाने के लिए टेम्पलेट लोड करें या अपनी कहानी इस्तेमाल करें।')),
+            scenes.map((s, i) => React.createElement("div", { className: "sc", key: s.id },
+                React.createElement("div", { className: "row" },
+                    s.img ? React.createElement("img", { className: "th", src: s.img, alt: "" }) : React.createElement("div", { className: "th" }, ICON[cat]),
+                    React.createElement("label", { className: "b sm" },
+                        "\uD83D\uDCF7 ",
+                        s.img ? t('Replace', 'बदलें') : t('Add image', 'इमेज'),
+                        React.createElement("input", { hidden: true, type: "file", accept: "image/*", onChange: e => { setImg(s.id, e.target.files?.[0]); e.target.value = ''; } })),
+                    React.createElement("button", { className: "sm", onClick: () => move(i, -1) }, "\u2191"),
+                    React.createElement("button", { className: "sm", onClick: () => move(i, 1) }, "\u2193"),
+                    React.createElement("button", { className: "sm", onClick: () => { imgs.current.delete(s.id); setScenes(S => S.filter(x => x.id !== s.id)); } }, "\u2715")),
+                React.createElement("textarea", { value: s.caption, onChange: e => upd(s.id, { caption: e.target.value }), placeholder: t('Caption', 'कैप्शन') }),
+                React.createElement("div", { className: "row" },
+                    React.createElement("label", { className: "n" },
+                        t('Seconds', 'सेकंड'),
+                        React.createElement("input", { type: "number", min: 1, max: 20, step: .5, value: s.dur, onChange: e => upd(s.id, { dur: Math.max(1, Math.min(20, +e.target.value || 1)) }) })),
+                    React.createElement("label", { className: "n" },
+                        t('Transition in', 'ट्रांज़िशन'),
+                        React.createElement("select", { value: s.trans, onChange: e => upd(s.id, { trans: e.target.value }) }, ['fade', 'slide', 'zoom', 'none'].map(x => React.createElement("option", { key: x }, x))))))),
+            React.createElement("div", { className: "row" },
+                React.createElement("button", { className: "b", onClick: () => setScenes(S => [...S, { id: nid(), caption: '', dur: 3, trans: 'fade' }]) },
+                    "+ ",
+                    t('Scene', 'सीन')),
+                React.createElement("label", { className: "b" },
+                    "\uD83D\uDCF7 ",
+                    t('Add many images', 'कई इमेज'),
+                    React.createElement("input", { hidden: true, type: "file", accept: "image/*", multiple: true, onChange: e => { bulk(e.target.files); e.target.value = ''; } }))),
+            React.createElement("div", { className: "n" }, t('Use your own photos, or free-licence sites such as Pexels, Pixabay or Unsplash — read each licence before commercial use. Without an image a scene uses a built-in gradient + emoji.', 'अपनी फोटो या Pexels/Pixabay/Unsplash जैसी फ्री-लाइसेंस साइट की इमेज इस्तेमाल करें — व्यावसायिक उपयोग से पहले लाइसेंस पढ़ें। इमेज न हो तो ग्रेडिएंट + इमोजी लगता है।'))),
+        React.createElement("div", { className: "c" },
+            React.createElement("h3", null,
+                "3. ",
+                t('Preview & export', 'प्रीव्यू और एक्सपोर्ट')),
+            React.createElement("canvas", { ref: cv, width: W, height: H, style: { width: '100%', maxWidth: 320, margin: 'auto', aspectRatio: '9/16', borderRadius: 14, background: '#000' } }),
+            React.createElement("label", null,
+                t('Style (for scenes without images)', 'स्टाइल (बिना इमेज वाले सीन)'),
+                React.createElement("select", { value: style, onChange: e => setStyle(e.target.value) }, Object.keys(PAL).map(x => React.createElement("option", { key: x }, x)))),
+            React.createElement("label", { className: "n" },
+                React.createElement("input", { type: "checkbox", checked: music, onChange: e => setMusic(e.target.checked) }),
+                " ",
+                t('Background music (original, synthesized — included in export)', 'बैकग्राउंड म्यूज़िक (ओरिजिनल, एक्सपोर्ट में शामिल)')),
+            React.createElement("label", { className: "n" },
+                React.createElement("input", { type: "checkbox", checked: voice, onChange: e => setVoice(e.target.checked) }),
+                " ",
+                t('Voice preview (browser speech, language above)', 'वॉइस प्रीव्यू (ब्राउज़र स्पीच)')),
+            React.createElement("div", { className: "n" },
+                "\u26A0\uFE0F ",
+                t('Browser speech plays through the speaker only. It CANNOT be recorded into the exported video — the file contains captions + music only. Hindi/Punjabi voices depend on your phone.', 'ब्राउज़र की आवाज़ सिर्फ़ स्पीकर से बजती है, एक्सपोर्ट वीडियो में रिकॉर्ड नहीं हो सकती — फ़ाइल में कैप्शन + म्यूज़िक ही होंगे।')),
+            React.createElement("div", { className: "n" },
+                "\uD83D\uDD0A ",
+                t('Voices on this phone for', 'इस फोन पर आवाज़ें'),
+                " ",
+                lang,
+                ": ",
+                'speechSynthesis' in window ? (lv.length || t('none installed — add one in Android Text-to-speech settings', 'कोई नहीं — Android Text-to-speech सेटिंग में जोड़ें')) : t('speech not supported', 'स्पीच सपोर्टेड नहीं')),
+            lv.length > 0 && React.createElement("select", { value: vn, onChange: e => setVn(e.target.value) },
+                React.createElement("option", { value: "" }, t('Default voice', 'डिफ़ॉल्ट आवाज़')),
+                lv.map(v => React.createElement("option", { key: v.name, value: v.name }, v.name))),
+            React.createElement("div", { className: "row" },
+                React.createElement("button", { className: "b", disabled: !!busy, onClick: () => play(false) },
+                    "\u25B6 ",
+                    t('Preview', 'प्रीव्यू')),
+                React.createElement("button", { className: "b", disabled: !!busy, onClick: () => play(true) },
+                    "\u23FA ",
+                    t('Export video', 'वीडियो एक्सपोर्ट')),
+                (busy === 'prev' || busy === 'rec') && React.createElement("button", { className: "b", onClick: () => { stopR.current = true; } }, "\u25A0")),
+            (busy === 'prev' || busy === 'rec') && React.createElement(React.Fragment, null,
+                React.createElement("div", null, busy === 'rec' ? t('Recording in real time — keep this tab open and screen on…', 'रिकॉर्डिंग चल रही है — टैब खुला और स्क्रीन ऑन रखें…') : t('Previewing…', 'प्रीव्यू…')),
+                React.createElement("div", { className: "bar" },
+                    React.createElement("i", { style: { width: Math.round(pct * 100) + '%' } }))),
+            err && React.createElement("div", { className: "e" }, err),
+            React.createElement("div", { className: "n" },
+                t('This browser can record:', 'यह ब्राउज़र रिकॉर्ड कर सकता है:'),
+                " MP4 ",
+                mp4 ? '✔' : '✘',
+                " \u00B7 WebM ",
+                webm ? '✔' : '✘'),
+            url && React.createElement(React.Fragment, null,
+                React.createElement("video", { src: url, controls: true, playsInline: true, style: { width: '100%', maxHeight: '60vh', borderRadius: 14, background: '#000' } }),
+                React.createElement("a", { className: "b", href: url, download: `reelmagic.${fmt}` },
+                    "\u2B07 ",
+                    t('Download', 'डाउनलोड'),
+                    " .",
+                    fmt.toUpperCase()),
+                React.createElement("div", { className: "n" }, fmt === 'mp4' ? t('Real MP4 recorded by your browser.', 'आपके ब्राउज़र द्वारा रिकॉर्ड किया गया असली MP4।') : t('Your browser records WebM only — saved as .webm (NOT MP4). It plays in Chrome/VLC; convert to MP4 with a free converter if needed.', 'आपका ब्राउज़र सिर्फ़ WebM रिकॉर्ड करता है — .webm के रूप में सेव (MP4 नहीं)।'))),
+            React.createElement("div", { className: "n" },
+                "\u26A0\uFE0F ",
+                t('Verify licensing of images, music and voices before commercial publishing.', 'व्यावसायिक प्रकाशन से पहले इमेज, संगीत और आवाज़ का लाइसेंस जाँचें।'))),
+        React.createElement("div", { className: "c" },
+            React.createElement("h3", null, t('Optional AI features', 'वैकल्पिक AI फीचर')),
+            inst && React.createElement("button", { className: "b", onClick: async () => { inst.prompt(); await inst.userChoice; setInst(null); } },
+                "\uD83D\uDCF2 ",
+                t('Install app on this phone', 'इस फोन पर ऐप इंस्टॉल करें')),
+            React.createElement("input", { type: "url", placeholder: "https://your-ai-server.example (optional, https only)", defaultValue: base, onBlur: e => { const v = e.target.value.trim(); if (v && !/^https:\/\//.test(v))
+                    return setErr(t('AI server URL must start with https://', 'AI सर्वर URL https:// से शुरू होना चाहिए')); try {
+                    localStorage.setItem('rm_ai', v);
+                }
+                catch { } setBase(v); } }),
+            React.createElement("div", { className: "n" },
+                ai ? '✅ ' + t('AI server reachable — Gemini story button enabled', 'AI सर्वर जुड़ा — Gemini बटन चालू') : '⚪ ' + t('No AI server connected (the app works fully without one).', 'कोई AI सर्वर नहीं (ऐप उसके बिना भी पूरा चलता है)।'),
+                " \u00B7 ",
+                t('Motion provider', 'मोशन प्रोवाइडर'),
+                ": ",
+                caps.motion || t('none (not implemented yet)', 'कोई नहीं (अभी लागू नहीं)')),
+            React.createElement("div", { className: "n" },
+                "\u2728 ",
+                t('AI story writing: needs a Gemini API key on the server (free tier exists). Not needed for the app.', 'AI कहानी: सर्वर पर Gemini API key चाहिए (फ्री टियर उपलब्ध)। ऐप के लिए ज़रूरी नहीं।'),
+                React.createElement("br", null),
+                "\uD83C\uDF9E ",
+                t('AI moving scenes / AI images: NOT included. They need an external image/video generation API (usually paid or credit-based). Nothing here pretends to do this.', 'AI मूविंग सीन / AI इमेज: शामिल नहीं। इसके लिए बाहरी इमेज/वीडियो API चाहिए (आमतौर पर पेड)।'),
+                React.createElement("br", null),
+                "\uD83D\uDCB3 ",
+                t('Plans ($5/month, $50/year) are a future version — no payments exist.', 'प्लान ($5/माह, $50/साल) भविष्य के वर्ज़न में — अभी कोई पेमेंट नहीं।'))));
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(function(){});</script></body></html>
