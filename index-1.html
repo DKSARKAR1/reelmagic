@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HisabSaathi</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#133d38">
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:#f6f7f6;color:#1d2b29}
+header{background:#133d38;color:#fff;padding:12px 14px}header h1{margin:0;font-size:20px}header small{opacity:.8}
+.modes{display:flex;gap:8px;margin-top:8px}.modes button{border:1px solid #fff;background:none;color:#fff;border-radius:20px;padding:6px 14px}
+.modes button.on{background:#fff;color:#133d38;font-weight:600}
+nav{display:flex;background:#fff;border-bottom:1px solid #ddd;position:sticky;top:0;z-index:2}
+nav button{flex:1;border:0;background:none;padding:12px 4px;font-size:14px}nav button.on{border-bottom:3px solid #133d38;font-weight:700}
+main{padding:12px;max-width:900px;margin:auto}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.card,.box{background:#fff;border:1px solid #e2e5e3;border-radius:12px;padding:12px;margin-bottom:12px}
+.cards .card{margin:0;padding:10px}.cards small{font-size:11px;color:#667}.cards b{display:block;font-size:17px;margin-top:4px}
+.in{color:#0a7a55}.out{color:#b3322f}
+label{font-size:12px;color:#556;display:block;margin:8px 0 3px}
+input,select{width:100%;padding:11px;border:1px solid #ccd;border-radius:8px;font-size:15px;background:#fff}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.btn{width:100%;background:#133d38;color:#fff;border:0;border-radius:8px;padding:13px;font-size:16px;margin-top:12px}
+.btn.s{width:auto;padding:8px 12px;font-size:13px;margin:0}.btn.g{background:#25a244}.btn.r{background:#b3322f}
+.tg button{flex:1;padding:10px;border:1px solid #ccd;background:#fff;border-radius:8px}.tg button.on{background:#e3f3ee;border-color:#133d38;font-weight:700}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.chips button{border:1px solid #ccd;background:#fff;border-radius:16px;padding:6px 12px}
+.tx{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #eee}
+.tx small{color:#667;display:block}.x{border:0;background:none;color:#b3322f;font-size:18px}
+.bars{display:flex;gap:6px;align-items:flex-end;height:120px;margin-top:8px}
+.bars div{flex:1;text-align:center;font-size:10px}.bars i{display:block;background:#133d38;border-radius:4px 4px 0 0;min-height:2px}
+.acts{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}.done{opacity:.55}
+</style></head><body>
+<header><h1>₹ HisabSaathi</h1><small>Roz ka hisaab, bina tension</small>
+<div class="modes"><button id="m-me" onclick="setMode('me')">👤 Personal</button><button id="m-shop" onclick="setMode('shop')">🏪 Shopkeeper</button></div></header>
+<nav id="nav"></nav><main id="main"></main>
+<script>
+const $=s=>document.querySelector(s),K='hs_v2';
+let db;try{db=JSON.parse(localStorage.getItem(K))}catch(e){}
+db=db||{tx:[],ud:[],items:['Tel','Surf','Chay','Sabun','Atta','Chini']};
+const save=()=>localStorage.setItem(K,JSON.stringify(db));
+const ld=(o=0)=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4-o*864e5).toISOString().slice(0,10);
+const S={mode:'shop',view:'home',type:'in',month:ld().slice(0,7),q:'',ft:'',fp:''};
+const inr=n=>'₹'+Number(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const CATS={shop:{in:['Customer payment','Other income'],out:['Stock purchase','Rent','Salary','Electricity','Transport','Other']},me:{in:['Salary','Other income'],out:['Food','Travel','Bills','Shopping','Other']}};
+const opts=()=>CATS[S.mode][S.type].map(c=>`<option>${c}</option>`).join('');
+const bal=u=>u.amt-u.paid.reduce((s,p)=>s+p.a,0);
+const mine=()=>db.tx.filter(t=>t.mode===S.mode);
+const sum=a=>a.reduce((s,t)=>s+t.amt,0);
+
+function setMode(m){S.mode=m;S.type='in';if(m==='me'&&S.view==='ud')S.view='home';render()}
+function setView(v){S.view=v;render()}
+function setType(t){S.type=t;$('#t-in').className=t==='in'?'on':'';$('#t-out').className=t==='out'?'on':'';$('#cat').innerHTML=opts()}
+function qi(n){$('#desc').value=n;$('#amt').focus()}
+function addItem(){const n=prompt('Naya item ka naam?');if(n&&n.trim()){db.items.push(n.trim());save();render()}}
+
+function add(){const a=parseFloat($('#amt').value);if(!(a>0))return alert('Amount daalo');
+db.tx.push({id:Date.now(),mode:S.mode,type:S.type,amt:a,pay:$('#pay').value,cat:$('#cat').value,desc:$('#desc').value.trim(),date:$('#dt').value||ld()});
+save();render()}
+function del(id){if(confirm('Ye entry delete karein?')){db.tx=db.tx.filter(t=>t.id!==id);save();render()}}
+
+function drawList(){const q=S.q.toLowerCase();
+const l=mine().filter(t=>t.date.startsWith(S.month)&&(!S.ft||t.type===S.ft)&&(!S.fp||t.pay===S.fp)&&(t.desc+' '+t.cat).toLowerCase().includes(q))
+.sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
+$('#list').innerHTML=l.length?l.map(t=>`<div class="tx"><div><b>${esc(t.desc||t.cat)}</b><small>${t.date} · ${t.pay} · ${esc(t.cat)}</small></div>
+<div><b class="${t.type}">${t.type==='in'?'+':'-'}${inr(t.amt)}</b> <button class="x" onclick="del(${t.id})">×</button></div></div>`).join(''):'<small>Koi entry nahi mili</small>'}
+function filt(k,v){S[k]=v;drawList()}
+
+function home(){const m=mine().filter(t=>t.date.startsWith(S.month)),i=sum(m.filter(t=>t.type==='in')),o=sum(m.filter(t=>t.type==='out'));
+const shop=S.mode==='shop';
+return `<div class="row" style="align-items:center;margin-bottom:8px"><b>${shop?'Shop':'Personal'} Monthly Overview</b><input type="month" value="${S.month}" onchange="S.month=this.value;render()"></div>
+<div class="cards"><div class="card"><small>${shop?'Business expenses':'Kharch'}</small><b class="out">${inr(o)}</b></div>
+<div class="card"><small>${shop?'Total sales':'Aaya'}</small><b class="in">${inr(i)}</b></div>
+<div class="card"><small>Net</small><b>${inr(i-o)}</b></div></div>
+<div class="box"><b>Add entry</b>
+<div class="row tg" style="margin-top:8px"><button id="t-out" onclick="setType('out')">− Expense / Kharch</button><button id="t-in" class="on" onclick="setType('in')">+ Income / Aaya</button></div>
+${shop?`<label>Quick item</label><div class="chips">${db.items.map(n=>`<button onclick="qi('${esc(n).replace(/'/g,'')}')">${esc(n)}</button>`).join('')}<button onclick="addItem()">+ item</button></div>`:''}
+<label>Amount (₹) *</label><input id="amt" type="number" inputmode="decimal" placeholder="e.g. 250">
+<div class="row"><div><label>Payment mode</label><select id="pay"><option>Cash</option><option>UPI</option><option>Card</option></select></div>
+<div><label>Category</label><select id="cat">${opts()}</select></div></div>
+<label>Description (optional)</label><input id="desc" placeholder="e.g. Tel, Surf">
+<label>Date</label><input id="dt" type="date" value="${ld()}">
+<button class="btn" onclick="add()">+ Save entry</button></div>
+<div class="box"><b>Transactions</b>
+<div class="row" style="margin-top:8px"><input placeholder="Search" oninput="filt('q',this.value)">
+<select onchange="filt('ft',this.value)"><option value="">All types</option><option value="in">Income</option><option value="out">Expense</option></select>
+<select onchange="filt('fp',this.value)"><option value="">All modes</option><option>Cash</option><option>UPI</option><option>Card</option></select></div>
+<div id="list"></div></div>`}
+
+function udView(){const open=db.ud.filter(u=>bal(u)>0),tot=open.reduce((s,u)=>s+bal(u),0);
+return `<div class="card"><small>Total udhaar baaki (${open.length} log)</small><b class="out" style="font-size:22px">${inr(tot)}</b></div>
+<div class="box"><b>Naya udhaar</b><label>Customer ka naam *</label><input id="un"><label>WhatsApp number (10 digit)</label><input id="up" type="tel">
+<label>Amount (₹) *</label><input id="ua" type="number" inputmode="decimal"><label>Note</label><input id="uo" placeholder="e.g. Atta, Tel">
+<button class="btn" onclick="addUd()">+ Udhaar likho</button></div>
+${db.ud.slice().reverse().map(u=>`<div class="box ${bal(u)<=0?'done':''}"><div class="row" style="align-items:center"><b>${esc(u.name)}</b>
+<b class="out" style="text-align:right">${bal(u)<=0?'Cleared ✓':inr(bal(u))}</b></div><small>${u.date} · ${esc(u.note)} · Total ${inr(u.amt)}</small>
+<div class="acts">${bal(u)>0?`<button class="btn s" onclick="recv(${u.id})">Payment mila</button>
+<button class="btn s g" onclick="wa(${u.id})">WhatsApp reminder</button>`:''}<button class="btn s r" onclick="delUd(${u.id})">Delete</button></div></div>`).join('')}`}
+function addUd(){const n=$('#un').value.trim(),a=parseFloat($('#ua').value);if(!n||!(a>0))return alert('Naam aur amount daalo');
+db.ud.push({id:Date.now(),name:n,phone:$('#up').value.replace(/\D/g,''),amt:a,note:$('#uo').value.trim(),date:ld(),paid:[]});save();render()}
+function recv(id){const u=db.ud.find(x=>x.id===id),a=parseFloat(prompt(`${u.name} se kitna mila? (baaki ${bal(u)})`));
+if(!(a>0))return;if(a>bal(u))return alert('Baaki se zyada nahi');u.paid.push({a,d:ld()});
+db.tx.push({id:Date.now(),mode:'shop',type:'in',amt:a,pay:'Cash',cat:'Udhaar recovery',desc:'Udhaar: '+u.name,date:ld()});save();render()}
+function wa(id){const u=db.ud.find(x=>x.id===id);let p=u.phone;if(p.length===10)p='91'+p;
+const msg=`Namaste ${u.name}, aapka ${inr(bal(u))} udhaar baaki hai. Kripya jald de dein. Dhanyawad 🙏`;
+open('https://wa.me/'+p+'?text='+encodeURIComponent(msg))}
+function delUd(id){if(confirm('Ye udhaar delete karein?')){db.ud=db.ud.filter(u=>u.id!==id);save();render()}}
+
+function summary(){const t=mine(),td=t.filter(x=>x.date===ld()),inc=td.filter(x=>x.type==='in');
+const days=[...Array(7)].map((_,k)=>{const d=ld(6-k);return{d:d.slice(5),v:sum(t.filter(x=>x.date===d&&x.type==='in'))}}),mx=Math.max(1,...days.map(x=>x.v));
+return `<div class="box"><b>Aaj ka hisaab (${ld()})</b><div class="cards" style="margin-top:8px"><div class="card"><small>Aaya</small><b class="in">${inr(sum(inc))}</b></div>
+<div class="card"><small>Gaya</small><b class="out">${inr(sum(td.filter(x=>x.type==='out')))}</b></div><div class="card"><small>Bacha</small><b>${inr(sum(inc)-sum(td.filter(x=>x.type==='out')))}</b></div></div>
+<div class="row"><div class="card"><small>Cash aaya</small><b>${inr(sum(inc.filter(x=>x.pay==='Cash')))}</b></div><div class="card"><small>UPI aaya</small><b>${inr(sum(inc.filter(x=>x.pay==='UPI')))}</b></div></div></div>
+<div class="box"><b>Pichhle 7 din ki kamai</b><div class="bars">${days.map(x=>`<div><small>${x.v?Math.round(x.v):''}</small><i style="height:${x.v/mx*90}px"></i>${x.d}</div>`).join('')}</div></div>
+${S.mode==='shop'?`<div class="card"><small>Udhaar baaki</small><b class="out">${inr(db.ud.reduce((s,u)=>s+bal(u),0))}</b></div>`:''}`}
+
+function dl(n,txt,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type}));a.download=n;a.click()}
+const bk=()=>dl('hisabsaathi-backup-'+ld()+'.json',JSON.stringify(db),'application/json');
+function csv(){const r=[['Date','Type','Amount','Mode','Category','Description'],...mine().map(t=>[t.date,t.type,t.amt,t.pay,t.cat,t.desc])];
+dl('hisab-'+S.mode+'.csv',r.map(x=>x.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n'),'text/csv')}
+function imp(f){if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d.tx))throw 0;
+if(confirm('Purana data replace hoga. Sure?')){db={tx:d.tx,ud:d.ud||[],items:d.items||db.items};save();render();alert('Restore ho gaya ✓')}}catch(e){alert('Galat backup file')}};r.readAsText(f)}
+const backup=()=>`<div class="box"><b>Backup & Restore</b><p><small>Data sirf is phone ke browser me hai. Hafte me ek baar backup zaroor lein, aur file WhatsApp/Drive pe save karein.</small></p>
+<button class="btn" onclick="bk()">⬇ Backup download (JSON)</button><label>Backup se restore</label><input type="file" accept=".json" onchange="imp(this.files[0])">
+<button class="btn" style="background:#556" onclick="csv()">Export CSV (Excel ke liye)</button></div>`;
+
+function render(){
+$('#m-me').className=S.mode==='me'?'on':'';$('#m-shop').className=S.mode==='shop'?'on':'';
+const tabs=[['home','🏠 Home'],...(S.mode==='shop'?[['ud','📒 Udhaar']]:[]),['sum','📊 Summary'],['bk','💾 Backup']];
+$('#nav').innerHTML=tabs.map(([v,l])=>`<button class="${S.view===v?'on':''}" onclick="setView('${v}')">${l}</button>`).join('');
+$('#main').innerHTML={home,ud:udView,sum:summary,bk:backup}[S.view]();
+if(S.view==='home')drawList()}
+render();
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
+</script></body></html>
